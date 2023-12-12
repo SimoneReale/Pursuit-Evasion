@@ -3,41 +3,12 @@
 import pulp
 import numpy as np
 from random import randint, choice
+import networkx as nx
+from utils import *
+from pygame import mixer
 
-# # some data
-# num_periods = 3
-# rate_limits = { 'energy'    : 10,
-#                 'freq'      : 20}
-# price = 2  # this could be a table or double-indexed table of [t, m] or ....
-
-# # SETS
-# M = rate_limits.keys()   # modes.  probably others...  discharge?
-# T = range(num_periods)   # the time periods
-
-# TM = {(t, m) for t in T for m in M}
-
-# model = pulp.LpProblem('Batts', pulp.LpMaximize)
-
-# # VARS
-# model.batt = pulp.LpVariable.dicts('batt_state', indexs=TM, lowBound=0, cat='Binary')
-# model.op_mode = pulp.LpVariable.dicts('op_mode', indexs=TM, cat='Binary')
-
-# # Constraints
-
-# # only one op mode in each time period...
-# for t in T:
-#     model += sum(model.op_mode[t, m] for m in M) <= 1
-
-# # Big-M constraint. limit rates for each rate, in each period.
-# # this does 2 things:  it is equivalent to the upper bound parameter in the var declaration
-# #                      It is a Big-M type of constraint which uses the binary var as a control <-- key point
-# for t, m in TM:
-#     model += model.batt[t, m] <= rate_limits[m] * model.op_mode[t, m]
-
-# # OBJ
-# model += sum(model.batt[t, m] * price for t, m in TM)
-
-# print(model)
+mixer.init()
+mixer.music.load("/home/ant0nius/Downloads/laser.wav")
 
 
 def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
@@ -90,7 +61,7 @@ def getSetOfMoves(starting_node: int, n_rows: int, n_columns: int):
     n_of_nodes = n_rows * n_columns
     pos = []
     # stay
-    pos.append(starting_node)
+    # pos.append(starting_node)
     # up
     if starting_node - n_columns >= 0:
         pos.append(starting_node - n_columns)
@@ -105,6 +76,15 @@ def getSetOfMoves(starting_node: int, n_rows: int, n_columns: int):
         pos.append(starting_node - 1)
 
     return pos
+
+
+def fromPathToSequenceOfNodes(path):
+    seq = []
+    for i in range(len(path) - 1):
+        seq.append(path[i][0])
+    seq.append(path[-1][0])
+    seq.append(path[-1][1])
+    return seq
 
 
 def createPolicyUnvisitedPath(
@@ -132,20 +112,15 @@ def createPolicyUnvisitedPath(
     return [(path[t], path[t + 1], t) for t in range(len(path) - 1)]
 
 
-def create_random_prey_path(indices, starting_node: int, length: int, n_rows: int, n_cols: int):
-
+def create_random_prey_path(
+    indices, starting_node: int, length: int, n_rows: int, n_cols: int
+):
     prey_path = {x: 0 for x in indices}
     lst_positions = createPolicyUnvisitedPath(starting_node, length, n_rows, n_cols)
     for x in lst_positions:
         prey_path[x] = 1
     return prey_path
 
-
-n_of_nodes = 9
-n_rows = int(np.sqrt(n_of_nodes))
-n_cols = int(np.sqrt(n_of_nodes))
-n_time = 4
-n_preys = 2
 
 nodes = set(range(n_of_nodes))
 times = set(range(n_time))
@@ -154,7 +129,10 @@ indices = getAllPossibleTupleMovesSetTime(n_rows, n_cols, n_time)
 
 costs = {x: randint(1, 50) for x in indices}
 
-path_prey_1 = create_random_prey_path(indices, 8, n_time, n_rows, n_cols)
+path_prey = [
+    create_random_prey_path(indices, randint(1, n_of_nodes - 1), n_time, n_rows, n_cols)
+    for _ in range(n_preys)
+]
 
 
 model = pulp.LpProblem("Pursuit", pulp.LpMinimize)
@@ -178,6 +156,111 @@ for t in range(n_time):
     )
 
 
-model += sum(model.var_path[i1, j1, t] * path_prey_1[i2, j2, t] if j1 == j2 and i1 != i2 and j1 != j2 else 0 for i1 in nodes for i2 in nodes for j1 in nodes for j2 in nodes for t in times) >= 1
+var = []
+for p in path_prey:
+    for t in times:
+        for i1 in nodes:
+            for i2 in nodes:
+                for j1 in nodes:
+                    for j2 in nodes:
+                        if (
+                            j1 == j2
+                            and j1 in getSetOfMoves(i1, n_rows, n_cols)
+                            and j2 in getSetOfMoves(i2, n_rows, n_cols)
+                        ):
+                            # print(f"{(i1, j1)} e {(i2, j2)} al tempo {t}")
+                            var.append(model.var_path[i1, j1, t] * p[i2, j2, t])
 
-print(model)
+    model += sum(var) >= 1
+
+model += model.var_path[0, 1, 0] == 1
+
+
+for t in times.difference({0}):
+    for i in nodes:
+        for j in nodes:
+            if j in getSetOfMoves(i, n_rows, n_cols):
+                model += (
+                    model.var_path[i, j, t]
+                    - sum(
+                        model.var_path[k, i, t - 1]
+                        for k in nodes
+                        if i in getSetOfMoves(k, n_rows, n_cols)
+                    )
+                ) <= 0
+
+
+glpk = pulp.apis.GLPK_CMD()
+
+
+status = glpk.actualSolve(model)
+
+inv_var = {v: k for k, v in model.var_path.items()}
+
+
+soln_dict = [inv_var[i] for i in model.variables() if i.varValue == 1]
+soln_dict.sort(key=lambda tup: tup[2])
+
+prey1 = [i for i, j in path_prey[0].items() if j == 1]
+prey2 = [i for i, j in path_prey[1].items() if j == 1]
+
+
+G = nx.grid_2d_graph(n_rows, n_cols)
+node_color_map = np.full((n_time + 1, n_rows * n_cols), "black")
+edge_color_map = np.full((n_time + 1, 2 * n_rows * n_cols - n_rows - n_cols), "black")
+
+
+blue_dot = fromPathToSequenceOfNodes(prey1)
+green_dot = fromPathToSequenceOfNodes(prey2)
+red_dot = fromPathToSequenceOfNodes(soln_dict)
+
+score_prey_1 = calculateScore(red_dot, blue_dot)
+score_prey_2 = calculateScore(red_dot, green_dot)
+
+
+cost_map = {x: {} for x in times}
+for key, value in costs.items():
+    start = fromNumToCoord(key[0])
+    end = fromNumToCoord(key[1])
+    cost_map[key[2]][(start, end)] = value
+
+
+addPath(node_color_map, blue_dot, "blue")
+addPath(node_color_map, green_dot, "green")
+addPath(node_color_map, red_dot, "red")
+
+print(f"Preda 1 punto blu: {blue_dot}")
+print(f"Preda 2 punto verde: {green_dot}")
+print(f"Catcher punto rosso: {red_dot}")
+print(f" \nscore1 {score_prey_1}\nscore2 {score_prey_2}\n\n")
+
+
+pos = {(x, y): (y, -x) for x, y in G.nodes()}
+nodes = nx.draw_networkx_nodes(G, node_color=node_color_map[0], pos=pos, node_size=250)
+edges = nx.draw_networkx_edges(G, edge_color=edge_color_map[0], pos=pos)
+plt.axis("off")
+
+
+def update(i):
+    nodes = nx.draw_networkx_nodes(
+        G, node_color=node_color_map[i], pos=pos, node_size=250
+    )
+    edge_labels = nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=cost_map[i])
+    plt.pause(1)
+    if i == score_prey_1 or i == score_prey_2:
+        mixer.music.play()
+    return (nodes, edge_labels)
+
+
+manager = plt.get_current_fig_manager()
+manager.full_screen_toggle()
+fig = plt.gcf()
+ani = FuncAnimation(fig, update, interval=1200, frames=n_time, blit=True)
+# plt.show()
+
+# for name in model.constraints.keys():
+#     value = model.constraints.get(name).value()
+#     slack = model.constraints.get(name).slack
+#     print(f'constraint {name} has value: {value:0.2e} and slack: {slack:0.2e}')
+
+# print(model)
