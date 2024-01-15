@@ -17,7 +17,7 @@ def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
 
     for x in range(n_of_nodes):
         # stay
-        # move_dict.append((x, x))
+        move_dict.append((x, x, t))
         # up
         if x - n_columns >= 0:
             move_dict.append((x, x - n_columns))
@@ -40,7 +40,7 @@ def getAllPossibleTupleMovesSetTime(n_rows: int, n_columns: int, n_time: int):
     for t in range(n_time):
         for x in range(n_of_nodes):
             # stay
-            # move_dict.append((x, x))
+            move_dict.append((x, x, t))
             # up
             if x - n_columns >= 0:
                 move_dict.append((x, x - n_columns, t))
@@ -61,7 +61,7 @@ def getSetOfMoves(starting_node: int, n_rows: int, n_columns: int):
     n_of_nodes = n_rows * n_columns
     pos = []
     # stay
-    # pos.append(starting_node)
+    pos.append(starting_node)
     # up
     if starting_node - n_columns >= 0:
         pos.append(starting_node - n_columns)
@@ -122,12 +122,28 @@ def create_unvisited_policy_prey_path(
     return prey_path
 
 
+def create_random_policy_prey_path(
+    indices, starting_node: int, length: int, n_rows: int, n_cols: int
+):
+    prey_path = {x: 0 for x in indices}
+    lst_positions = createRandomPath(starting_node, length, n_rows, n_cols)
+    for x in lst_positions:
+        prey_path[x] = 1
+    return prey_path
+
+
 nodes = set(range(n_of_nodes))
 times = set(range(n_time))
 
 indices = getAllPossibleTupleMovesSetTime(n_rows, n_cols, n_time)
 
+# costs = {}
+# for x in indices:
+#     costs[x] = randint(1, 50) if x[0] != x[1] else 0
+
+
 costs = {x: randint(1, 50) for x in indices}
+
 
 path_prey = [
     create_unvisited_policy_prey_path(
@@ -196,10 +212,15 @@ for t in times.difference({0}):
 
 # status = glpk.actualSolve(model)
 
-status = model.solve()
+# status = model.solve()
+
+solver = pulp.getSolver('CPLEX_PY')
+status = solver.solve(model)
+
+if status == -1:
+    print("Your problem is infeasible!")
 
 inv_var = {v: k for k, v in model.var_path.items()}
-
 
 soln_dict = [inv_var[i] for i in model.variables() if i.varValue == 1]
 soln_dict.sort(key=lambda tup: tup[2])
@@ -207,11 +228,14 @@ soln_dict.sort(key=lambda tup: tup[2])
 prey1 = [i for i, j in path_prey[0].items() if j == 1]
 prey2 = [i for i, j in path_prey[1].items() if j == 1]
 
-
 G = nx.grid_2d_graph(n_rows, n_cols)
+for x in G.nodes:
+    G.add_edge(x, x)
 node_color_map = np.full((n_time + 1, n_rows * n_cols), "black")
-edge_color_map = np.full((n_time + 1, 2 * n_rows * n_cols - n_rows - n_cols), "black")
-
+# aggiungo autoanelli
+edge_color_map = np.full(
+    (n_time + 1, 2 * n_rows * n_cols - n_rows - n_cols + n_rows * n_cols), "black"
+)
 
 blue_dot = fromPathToSequenceOfNodes(prey1)
 green_dot = fromPathToSequenceOfNodes(prey2)
@@ -220,13 +244,11 @@ red_dot = fromPathToSequenceOfNodes(soln_dict)
 score_prey_1 = calculateScore(red_dot, blue_dot)
 score_prey_2 = calculateScore(red_dot, green_dot)
 
-
 cost_map = {x: {} for x in times}
 for key, value in costs.items():
     start = fromNumToCoord(key[0])
     end = fromNumToCoord(key[1])
     cost_map[key[2]][(start, end)] = value
-
 
 addPath(node_color_map, blue_dot, "blue")
 addPath(node_color_map, green_dot, "green")
@@ -237,12 +259,12 @@ print(f"Preda 2 punto verde: {green_dot}")
 print(f"Catcher punto rosso: {red_dot}")
 print(f" \nscore1 {score_prey_1}\nscore2 {score_prey_2}\n\n")
 
-
 pos = {(x, y): (y, -x) for x, y in G.nodes()}
-nodes = nx.draw_networkx_nodes(G, node_color=node_color_map[0], pos=pos, node_size=250)
+nodes = nx.draw_networkx_nodes(
+    G, node_color=node_color_map[0], pos=pos, node_size=250
+)
 edges = nx.draw_networkx_edges(G, edge_color=edge_color_map[0], pos=pos)
 plt.axis("off")
-
 
 def update(i):
     nodes = nx.draw_networkx_nodes(
@@ -250,21 +272,17 @@ def update(i):
     )
     edge_labels = nx.draw_networkx_edge_labels(G, pos=pos, edge_labels=cost_map[i])
     plt.pause(1)
-    if i == score_prey_1 or i == score_prey_2:
-        mixer.music.play()
+    # if i == score_prey_1 or i == score_prey_2:
+    #     mixer.music.play()
     return (nodes, edge_labels)
-
 
 manager = plt.get_current_fig_manager()
 manager.full_screen_toggle()
 fig = plt.gcf()
 ani = FuncAnimation(fig, update, interval=1200, frames=n_time, blit=True)
-# plt.show()
+plt.show()
 
 # for name in model.constraints.keys():
 #     value = model.constraints.get(name).value()
 #     slack = model.constraints.get(name).slack
 #     print(f'constraint {name} has value: {value:0.2e} and slack: {slack:0.2e}')
-
-# print(model)
-print(costs)

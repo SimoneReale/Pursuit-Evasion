@@ -154,6 +154,7 @@ def createPathToNode(start: int, dest: int) -> list[int]:
 
 def createRandomPath(start: int, length: int, n_rows: int, n_columns: int) -> list[int]:
     path = [start]
+    length += 1
     for _ in range(length - 1):
         moves = getSetOfMoves(path[-1], n_rows, n_columns)
         path.append(choice(moves))
