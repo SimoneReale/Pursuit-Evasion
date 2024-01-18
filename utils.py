@@ -5,15 +5,26 @@ from matplotlib.animation import FuncAnimation
 from random import choice, randint
 from dataclasses import dataclass
 
-
+my_token = "DEV-94948290af01e598cda5cc5f58595c2639ecbbd8"
 n_of_nodes = 16
 n_rows = int(np.sqrt(n_of_nodes))
 n_cols = int(np.sqrt(n_of_nodes))
-n_time = 12
-n_preys = 2
+n_time = 8
+n_preys = 1
 
 
-################################################################## HO DISATTIVATO LO STAY
+##################################################################
+
+
+
+
+
+
+
+
+
+
+
 
 
 @dataclass
@@ -22,8 +33,6 @@ class BestPoint:
     target: int
     dist_from_target: int
     time_difference: int
-
-
 # The distance d(u,v) between two vertices u and v of a finite graph
 # is the minimum length of the paths connecting them (i.e., the length of a graph geodesic).
 # If no such path exists (i.e., if the vertices lie in different connected components),
