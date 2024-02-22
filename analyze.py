@@ -157,7 +157,7 @@ def anim():
         def extract_numbers(s):
             return tuple(map(int, s.split("_")[1:]))
 
-        soln_list = [extract_numbers(s) for s in loaded["sol"]]
+        soln_list = [extract_numbers(s) for s in loaded["sol"] if s[0] == 'x']
         soln_list.sort(key=lambda tup: tup[2])
         print(soln_list)
 
@@ -167,7 +167,7 @@ def anim():
     costs = loaded["costs"]
     prey1 = [i for i, j in path_prey[0].items() if j == 1]
 
-    # prey2 = [i for i, j in path_prey[1].items() if j == 1] ############################# PREY 2
+    prey2 = [i for i, j in path_prey[1].items() if j == 1] ############################# PREY 2
 
     G = nx.grid_2d_graph(n_rows, n_cols)
     for x in G.nodes:
@@ -179,10 +179,10 @@ def anim():
     )
 
     blue_dot = fromPathToSequenceOfNodes(prey1)
-    # green_dot = fromPathToSequenceOfNodes(prey2)   ############################# PREY 2
+    green_dot = fromPathToSequenceOfNodes(prey2)   ############################# PREY 2
     red_dot = fromPathToSequenceOfNodes(soln_list)
     score_prey_1 = calculateScore(red_dot, blue_dot)
-    # score_prey_2 = calculateScore(red_dot, green_dot)  ############################# PREY 2
+    score_prey_2 = calculateScore(red_dot, green_dot)  ############################# PREY 2
 
     cost_map = {x: {} for x in times}
     for key, value in costs.items():
@@ -191,14 +191,14 @@ def anim():
         cost_map[key[2]][(start, end)] = value
 
     addPath(node_color_map, blue_dot, "blue")
-    # addPath(node_color_map, green_dot, "green") ############################# PREY 2
+    addPath(node_color_map, green_dot, "green") ############################# PREY 2
     addPath(node_color_map, red_dot, "red")
 
     print(f"Preda 1 punto blu: {blue_dot}")
-    # print(f"Preda 2 punto verde: {green_dot}")  ############################# PREY 2
+    print(f"Preda 2 punto verde: {green_dot}")  ############################# PREY 2
     print(f"Catcher punto rosso: {red_dot}")
     print(f"\nscore1 {score_prey_1}")
-    # print(f"\nscore2 {score_prey_2}\n")
+    print(f"\nscore2 {score_prey_2}\n")
 
     pos = {(x, y): (y, -x) for x, y in G.nodes()}
     nodes = nx.draw_networkx_nodes(
