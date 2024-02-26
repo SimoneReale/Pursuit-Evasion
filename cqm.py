@@ -6,7 +6,7 @@ from utils import n_of_nodes, n_time, n_rows, n_cols, n_preys
 from random import randint, choice
 import dimod
 from time_profiling import profile, print_prof_data, clear_prof_data
-from memory_profiler import memory_usage
+import sys
 
 
 def getSetOfMoves(starting_node: int, n_rows: int, n_columns: int):
@@ -341,6 +341,14 @@ def createAdvancedCQM():
 
 if __name__ == "__main__":
     cqm, path_prey, costs = createAdvancedCQM()
+    #print(cqm)
+    original_stdout = sys.stdout
+    with open('cqm.txt', 'w') as f:
+        sys.stdout = f 
+        print(cqm)
+        print("\n\n")
+        print(path_prey)
+        sys.stdout = original_stdout # Reset the standard output to its original value
 
     # mem_usage = memory_usage(createCQM)
     # print('Memory usage (in chunks of .1 seconds): %s MiB' % mem_usage)
