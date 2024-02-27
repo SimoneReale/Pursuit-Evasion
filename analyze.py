@@ -169,6 +169,8 @@ def anim():
 
     prey2 = [i for i, j in path_prey[1].items() if j == 1] ############################# PREY 2
 
+    
+
     G = nx.grid_2d_graph(n_rows, n_cols)
     for x in G.nodes:
         G.add_edge(x, x)
@@ -183,6 +185,10 @@ def anim():
     red_dot = fromPathToSequenceOfNodes(soln_list)
     score_prey_1 = calculateScore(red_dot, blue_dot)
     score_prey_2 = calculateScore(red_dot, green_dot)  ############################# PREY 2
+
+    # prey3 = [i for i, j in path_prey[2].items() if j == 1] ############################# PREY 2
+    # pink_dot = fromPathToSequenceOfNodes(prey3)
+    # score_prey_3 = calculateScore(red_dot, pink_dot)
 
     cost_map = {x: {} for x in times}
     for key, value in costs.items():
@@ -199,6 +205,7 @@ def anim():
     print(f"Catcher punto rosso: {red_dot}")
     print(f"\nscore1 {score_prey_1}")
     print(f"\nscore2 {score_prey_2}\n")
+    # print(f"\nscore3 {score_prey_3}\n")
 
     pos = {(x, y): (y, -x) for x, y in G.nodes()}
     nodes = nx.draw_networkx_nodes(
