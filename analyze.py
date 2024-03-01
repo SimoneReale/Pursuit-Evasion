@@ -159,14 +159,14 @@ def anim():
 
         soln_list = [extract_numbers(s) for s in loaded["sol"] if s[0] == 'x']
         soln_list.sort(key=lambda tup: tup[2])
-        print(soln_list)
+        print(f"\nEcco la sol {soln_list}")
+        print(loaded)
 
     nodes = set(range(n_of_nodes))
     times = set(range(n_time))
     path_prey = loaded["prey"]
     costs = loaded["costs"]
     prey1 = [i for i, j in path_prey[0].items() if j == 1]
-
     prey2 = [i for i, j in path_prey[1].items() if j == 1] ############################# PREY 2
 
     
@@ -197,11 +197,11 @@ def anim():
         cost_map[key[2]][(start, end)] = value
 
     addPath(node_color_map, blue_dot, "blue")
-    addPath(node_color_map, green_dot, "green") ############################# PREY 2
+    # addPath(node_color_map, green_dot, "green") ############################# PREY 2
     addPath(node_color_map, red_dot, "red")
 
     print(f"Preda 1 punto blu: {blue_dot}")
-    print(f"Preda 2 punto verde: {green_dot}")  ############################# PREY 2
+    # print(f"Preda 2 punto verde: {green_dot}")  ############################# PREY 2
     print(f"Catcher punto rosso: {red_dot}")
     print(f"\nscore1 {score_prey_1}")
     print(f"\nscore2 {score_prey_2}\n")

@@ -6,7 +6,7 @@ from random import choice, randint
 from dataclasses import dataclass
 
 my_token = "DEV-3aec25b5f29cb00d54fe6bc6d53a707cb7007b74"
-n_of_nodes = 81
+n_of_nodes = 144
 n_rows = int(np.sqrt(n_of_nodes))
 n_cols = int(np.sqrt(n_of_nodes))
 n_time = 40
@@ -16,23 +16,14 @@ n_preys = 2
 ##################################################################
 
 
-
-
-
-
-
-
-
-
-
-
-
 @dataclass
 class BestPoint:
     prey_num: int
     target: int
     dist_from_target: int
     time_difference: int
+
+
 # The distance d(u,v) between two vertices u and v of a finite graph
 # is the minimum length of the paths connecting them (i.e., the length of a graph geodesic).
 # If no such path exists (i.e., if the vertices lie in different connected components),
@@ -94,7 +85,7 @@ def getAllPossibleMoves(n_rows: int, n_columns: int):
     for x in range(n_of_nodes):
         pos = []
         # stay
-        #pos.append(x)
+        pos.append(x)
         # up
         if x - n_columns >= 0:
             pos.append(x - n_columns)
@@ -119,7 +110,7 @@ def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
 
     for x in range(n_of_nodes):
         # stay
-        #move_dict.append((x, x))
+        move_dict.append((x, x))
         # up
         if x - n_columns >= 0:
             move_dict.append((x, x - n_columns))
@@ -134,7 +125,7 @@ def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
             move_dict.append((x, x - 1))
     move_dict_new = []
     [move_dict_new.append(x) for x in move_dict if (x[1], x[0]) not in move_dict_new]
-    return {x : randint(1, 50) for x in move_dict_new}
+    return {x: randint(1, 50) for x in move_dict_new}
 
 
 def createPathToNode(start: int, dest: int) -> list[int]:
