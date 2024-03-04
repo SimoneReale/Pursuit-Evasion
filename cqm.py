@@ -92,24 +92,24 @@ def create_unvisited_policy_prey_path(
 
 def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
     n_of_nodes = n_rows * n_columns
-    move_dict = []
+    move_list = []
 
     for x in range(n_of_nodes):
         # stay
-        move_dict.append((x, x))
+        move_list.append((x, x))
         # up
         if x - n_columns >= 0:
-            move_dict.append((x, x - n_columns))
+            move_list.append((x, x - n_columns))
         # down
         if x + n_columns < n_of_nodes:
-            move_dict.append((x, x + n_columns))
+            move_list.append((x, x + n_columns))
         # right
         if (x + 1) % n_columns != 0:
-            move_dict.append((x, x + 1))
+            move_list.append((x, x + 1))
         # left
         if x % n_columns != 0:
-            move_dict.append((x, x - 1))
-    return move_dict
+            move_list.append((x, x - 1))
+    return move_list
 
 
 def getAllPossibleTupleMovesSetTime(n_rows: int, n_columns: int, n_time: int):
@@ -224,7 +224,7 @@ def createAdvancedCQM():
     times = set(range(n_time))
     indices = getAllPossibleTupleMovesSetTime(n_rows, n_cols, n_time)
     costs = {x: randint(5, 15) for x in indices}
-    path_prey = [
+    lst_prey_path = [
         create_unvisited_policy_prey_path(
             indices, randint(1, n_of_nodes - 1), n_time, n_rows, n_cols
         )
@@ -233,50 +233,47 @@ def createAdvancedCQM():
 
     cqm = ConstrainedQuadraticModel()
 
-    vars_path = {(i[0], i[1], i[2]): Binary(f"x_{i[0]}_{i[1]}_{i[2]}") for i in indices}
-    vars_all_intercepted = {(i): Binary(f"u_{i}") for i in times}
-    vars_single_t_inter = {
-        (p, t): Binary(f"z_{p}_{t}") for p in range(n_preys) for t in range(n_time)
-    }
-    vars_multiple_t_inter = {
-        (p, t): Binary(f"w_{p}_{t}") for p in range(n_preys) for t in range(n_time)
-    }
+    vars_x = {(i[0], i[1], i[2]): Binary(f"x_{i[0]}_{i[1]}_{i[2]}") for i in indices}
+    vars_u = {(i): Binary(f"u_{i}") for i in times}
+    vars_z = {(p, t): Binary(f"z_{p}_{t}") for p in range(n_preys) for t in range(n_time)}
+    vars_w = {(p, t): Binary(f"w_{p}_{t}") for p in range(n_preys) for t in range(n_time)}
 
-    obj = quicksum(
-        vars_path[x[0], x[1], x[2]] * costs[x] * vars_all_intercepted[x[2]]
-        for x in indices
+    obj_func = quicksum(
+        vars_x[i_j_t[0], i_j_t[1], i_j_t[2]] * costs[i_j_t] * vars_u[i_j_t[2]]
+        for i_j_t in indices
     )
 
-    cqm.set_objective(obj)
+    cqm.set_objective(obj_func)
 
     # # faccio un solo passaggio per istante di tempo
     for t in range(n_time):
         cst = quicksum(
-            vars_path[x[0], x[1], t]
-            for x in getAllPossibleTupleMovesSet(n_rows, n_cols)
+            vars_x[move_i_j[0], move_i_j[1], t]
+            for move_i_j in getAllPossibleTupleMovesSet(n_rows, n_cols)
         )
         cqm.add_constraint(cst == 1, label=f"One pass per time {t}")
 
     print(f"Constraint OK: One pass per time instant")
 
     # constraint dello start
-    cqm.add_constraint(vars_path[0, 1, 0] == 1, label=f"Start in 0 then 1")
+    cqm.add_constraint(vars_x[0, 1, 0] == 1, label=f"Start in 0 then 1")
     print(f"Constraint OK: Starting Point")
 
     # constraint della intersection
+    print("Building the interception constraint:")
     with alive_bar(n_time * n_preys * (n_of_nodes**3)) as bar:
-        for index_prey, p in enumerate(path_prey):
+        for index_prey, prey_path in enumerate(lst_prey_path):
             for t in times:
-                var = []
+                temp = []
                 for i1 in nodes:
                     for i2 in nodes:
                         for j in nodes:
                             bar()
                             if j in possible_moves[i1] and j in possible_moves[i2]:
-                                var.append(vars_path[i1, j, t] * p[i2, j, t])
+                                temp.append(vars_x[i1, j, t] * prey_path[i2, j, t])
 
                 cqm.add_constraint(
-                    quicksum(var) - vars_single_t_inter[index_prey, t] == 0,
+                    quicksum(temp) - vars_z[index_prey, t] == 0,
                     label=f"Intersection with target {index_prey} at time {t}",
                 )
     print(f"Constraint OK: Interception")
@@ -285,8 +282,8 @@ def createAdvancedCQM():
     for t in times.difference({0}):
         for index_prey in range(n_preys):
             cqm.add_constraint(
-                vars_multiple_t_inter[index_prey, t - 1]
-                - vars_multiple_t_inter[index_prey, t]
+                vars_w[index_prey, t - 1]
+                - vars_w[index_prey, t]
                 <= 0,
                 label=f"Propagation at time {t} for prey {index_prey}",
             )
@@ -296,46 +293,47 @@ def createAdvancedCQM():
     for t in times:
         for index_prey in range(n_preys):
             cqm.add_constraint(
-                vars_multiple_t_inter[index_prey, t]
-                - vars_single_t_inter[index_prey, t]
+                vars_w[index_prey, t]
+                - vars_z[index_prey, t]
                 >= 0,
                 label=f"Multiple {t} for prey {index_prey}",
             )
     print(f"Constraint OK: Interception multiple and single")
 
-    for p in range(n_preys):
+    for prey_path in range(n_preys):
         vars_temp = []
         for t in times:
-            vars_temp.append(vars_single_t_inter[p, t])
+            vars_temp.append(vars_z[prey_path, t])
         cqm.add_constraint(
-            quicksum(vars_temp) >= 1, label=f"At the end {p} is intercepted"
+            quicksum(vars_temp) >= 1, label=f"At the end {prey_path} is intercepted"
         )
     print(f"Constraint OK: At the end there is interception ")
 
     for t in times:
         vars_temp = []
         for index_prey in range(n_preys):
-            vars_temp.append(vars_multiple_t_inter[index_prey, t])
+            vars_temp.append(vars_w[index_prey, t])
         cqm.add_constraint(
-            sum(vars_temp) - n_preys * (1 - vars_all_intercepted[t]) >= 0,
+            sum(vars_temp) - n_preys * (1 - vars_u[t]) >= 0,
             label=f"All intercepted at time {t}",
         )
     print("Constraint OK: All intercepted")
 
     # constraint del movimento su nodi adiacenti
+    print("Building the adjacency constraint:")
     with alive_bar((n_time - 1) * (n_of_nodes**2)) as bar:
         for t in times.difference({0}):
             for i in nodes:
                 for j in nodes:
                     bar()
-                    if j in getSetOfMoves(i, n_rows, n_cols):
+                    if j in possible_moves[i]:
                         cqm.add_constraint(
                             (
-                                vars_path[i, j, t]
+                                vars_x[i, j, t]
                                 - quicksum(
-                                    vars_path[k, i, t - 1]
+                                    vars_x[k, i, t - 1]
                                     for k in nodes
-                                    if i in getSetOfMoves(k, n_rows, n_cols)
+                                    if i in possible_moves[k]
                                 )
                             )
                             <= 0,
@@ -348,7 +346,7 @@ def createAdvancedCQM():
     # presolve.apply()
     # reduced_cqm = presolve.detach_model()
 
-    return cqm, path_prey, costs
+    return cqm, lst_prey_path, costs
 
 
 # Maximum memory usage: 304.75390625 MiB
