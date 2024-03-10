@@ -90,6 +90,18 @@ def create_unvisited_policy_prey_path(
     return prey_path
 
 
+def create_unvisited_path_and_states(
+    indices, starting_node: int, length: int, n_rows: int, n_cols: int
+):
+    prey_path = {x: 0 for x in indices}
+    lst_states = []
+    lst_positions = createPolicyUnvisitedPath(starting_node, length, n_rows, n_cols)
+    for x in lst_positions:
+        prey_path[x] = 1
+        lst_states.append((x[0], x[2]))
+    return prey_path, lst_states
+
+
 def getAllPossibleTupleMovesSet(n_rows: int, n_columns: int):
     n_of_nodes = n_rows * n_columns
     move_list = []

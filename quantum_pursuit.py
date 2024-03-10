@@ -1,5 +1,6 @@
 from dwave.system import LeapHybridCQMSampler, LeapHybridSampler
 from cqm import createCQM, createAdvancedCQM
+from new_cqm import createStatesCQM, createMiniModelCQM
 from utils import my_token
 import pickle
 import dimod
@@ -16,7 +17,6 @@ def run_hybridCQM_solver(cqm):
     # Solve the problem using the CQM solver
     sampleset = sampler.sample_cqm(cqm, label="Quantum Pursuit")
     feasible_sampleset = sampleset.filter(lambda row: row.is_feasible)
-    print(feasible_sampleset.record)
     print(f"Number of correct samples: {len(feasible_sampleset)}")
     
     with open("sampleset_info.pkl", "wb") as f:
@@ -27,6 +27,7 @@ def run_hybridCQM_solver(cqm):
     except:
         sample = sampleset.first.sample
         original_stdout = sys.stdout
+        print("No feasible solution found!")
         with open("violations.txt", "w") as f:
             sys.stdout = f
             print(f"{cqm.violations(sample, skip_satisfied=True)}")
@@ -70,6 +71,7 @@ def run_SimulatedAnnealing_Solver(cqm):
 def run_QPU(cqm):
     bqm, invert = dimod.cqm_to_bqm(cqm)
     print(f"\nNum of var: {bqm.num_variables}\nNum of interactions: {bqm.num_interactions}")
+    #Advantage_system6.4
     sampler = EmbeddingComposite(
         DWaveSampler(
         token= my_token,
@@ -84,7 +86,7 @@ def run_QPU(cqm):
     return sol
 
 if __name__ == "__main__":
-    cqm, path_prey, costs = createAdvancedCQM()
+    cqm, path_prey, costs = createMiniModelCQM()
     sol = run_hybridCQM_solver(cqm)
     # sol = run_hybridBQM_solver(cqm)
     serial = {"sol": sol, "prey": path_prey, "costs": costs}
