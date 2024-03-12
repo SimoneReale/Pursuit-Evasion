@@ -1,0 +1,2 @@
+Num of variables: 120114
+Num of interactions: 6825656

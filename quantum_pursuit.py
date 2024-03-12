@@ -5,7 +5,9 @@ from utils import my_token
 import pickle
 import dimod
 from dwave.system.samplers import DWaveSampler
+from dwave.samplers import SteepestDescentSolver, TabuSampler
 from dwave.system.composites import EmbeddingComposite
+from dwave.preprocessing.presolve import Presolver
 import hybrid
 import sys
 
@@ -13,9 +15,13 @@ import sys
 def run_hybridCQM_solver(cqm):
     # Initialize the CQM solver
     sampler = LeapHybridCQMSampler(token=my_token)
+    presolve = Presolver(cqm)
+    print("Presolving")
+    presolve.apply()
+    reduced_cqm = presolve.detach_model()
     print("\nStarting hybrid sampler: OK")
     # Solve the problem using the CQM solver
-    sampleset = sampler.sample_cqm(cqm, label="Quantum Pursuit")
+    sampleset = sampler.sample_cqm(reduced_cqm, label="Quantum Pursuit")
     feasible_sampleset = sampleset.filter(lambda row: row.is_feasible)
     print(f"Number of correct samples: {len(feasible_sampleset)}")
     
@@ -23,9 +29,9 @@ def run_hybridCQM_solver(cqm):
         pickle.dump(feasible_sampleset.info, f)
         f.close()
     try:
-        sample = feasible_sampleset.first.sample
+        sample = presolve.restore_samples(sampleset.first.sample)
     except:
-        sample = sampleset.first.sample
+        sample = presolve.restore_samples(sampleset.first.sample)
         original_stdout = sys.stdout
         print("No feasible solution found!")
         with open("violations.txt", "w") as f:
@@ -33,7 +39,9 @@ def run_hybridCQM_solver(cqm):
             print(f"{cqm.violations(sample, skip_satisfied=True)}")
             sys.stdout = original_stdout
 
+    print(sample)
     sol = [key for key, val in sample.items() if val > 0]
+
     return sol
 
 
@@ -65,8 +73,30 @@ def run_SimulatedAnnealing_Solver(cqm):
     bqm, invert = dimod.cqm_to_bqm(cqm)
     sampleset = dimod.SimulatedAnnealingSampler().sample(bqm)
     sample = sampleset.first.sample
+    sample_cqm = invert(sample)
+    print(f"{cqm.violations(sample_cqm, skip_satisfied=True)}")
     sol = [key for key, val in sample.items() if val > 0]
     return sol
+
+def run_Tabu(cqm):
+    bqm, invert = dimod.cqm_to_bqm(cqm)
+    sampleset = TabuSampler().sample(bqm, num_reads=10000, timeout=50)
+    sample = sampleset.first.sample
+    sample_cqm = invert(sample)
+    print(f"{cqm.violations(sample_cqm, skip_satisfied=True)}")
+    sol = [key for key, val in sample.items() if val > 0]
+    return sol
+
+def run_Steepest(cqm):
+    bqm, invert = dimod.cqm_to_bqm(cqm)
+    print("\nStaring Steepest descent")
+    sampleset = SteepestDescentSolver().sample(bqm)
+    sample = sampleset.first.sample
+    sample_cqm = invert(sample)
+    print(f"{cqm.violations(sample_cqm, skip_satisfied=True)}")
+    sol = [key for key, val in sample.items() if val > 0]
+    return sol
+
 
 def run_QPU(cqm):
     bqm, invert = dimod.cqm_to_bqm(cqm)
@@ -82,6 +112,8 @@ def run_QPU(cqm):
     print("\nStarting QPU: OK")
     sampleset = sampler.sample(bqm)
     sample = sampleset.first.sample
+    sample_cqm = invert(sample)
+    print(f"{cqm.violations(sample_cqm, skip_satisfied=True)}")
     sol = [key for key, val in sample.items() if val > 0]
     return sol
 

@@ -159,8 +159,8 @@ def anim():
 
         soln_list = [extract_numbers(s) for s in loaded["sol"] if s[0] == 'x']
         soln_list.sort(key=lambda tup: tup[2])
-        print(f"\nEcco la sol {soln_list}")
-        print(loaded)
+        # print(f"\nEcco la sol {soln_list}")
+        # print(loaded)
 
     nodes = set(range(n_of_nodes))
     times = set(range(n_time))

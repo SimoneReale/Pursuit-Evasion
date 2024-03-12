@@ -247,29 +247,22 @@ def createStatesCQM():
 
     cqm.set_objective(obj_func)
 
-    #un solo nodo occupato per volta
+    # un solo nodo occupato per volta
     for t in range(n_time):
-        cst = quicksum(
-            vars_s[n,t]
-            for n in nodes
-        )
+        cst = quicksum(vars_s[n, t] for n in nodes)
         cqm.add_constraint(cst == 1, label=f"One node per time {t}")
 
     for t in times_minus_0:
         for move_i_j in getAllPossibleTupleMovesSet(n_rows, n_cols):
             cqm.add_constraint(
-                vars_x[move_i_j[0], move_i_j[1], t]
-                - (vars_s[move_i_j[0], t - 1])
-                <= 0,
+                vars_x[move_i_j[0], move_i_j[1], t] - (vars_s[move_i_j[0], t - 1]) <= 0,
                 label=f"Inference of movement start ({move_i_j[0]}, {move_i_j[1]}) at time {t}",
             )
 
     for t in times_minus_0:
         for move_i_j in getAllPossibleTupleMovesSet(n_rows, n_cols):
             cqm.add_constraint(
-                vars_x[move_i_j[0], move_i_j[1], t]
-                - (vars_s[move_i_j[1], t])
-                <= 0,
+                vars_x[move_i_j[0], move_i_j[1], t] - (vars_s[move_i_j[1], t]) <= 0,
                 label=f"Inference of movement end ({move_i_j[0]}, {move_i_j[1]}) at time {t}",
             )
 
@@ -277,7 +270,8 @@ def createStatesCQM():
         for move_i_j in getAllPossibleTupleMovesSet(n_rows, n_cols):
             cqm.add_constraint(
                 vars_x[move_i_j[0], move_i_j[1], t]
-                - (vars_s[move_i_j[1], t]) - (vars_s[move_i_j[0], t - 1])
+                - (vars_s[move_i_j[1], t])
+                - (vars_s[move_i_j[0], t - 1])
                 >= 1,
                 label=f"Inference ({move_i_j[0]}, {move_i_j[1]}) at time {t}",
             )
@@ -390,21 +384,16 @@ def createMiniModelCQM():
             temp = []
             for move_i_j in getAllPossibleTupleMovesSet(n_rows, n_cols):
                 if move_i_j[0] == n and n in possible_moves[move_i_j[1]]:
-                    temp.append(
-                        vars_s[move_i_j[1], t - 1]
-                    )
+                    temp.append(vars_s[move_i_j[1], t - 1])
             cqm.add_constraint(
                 vars_s[n, t] - quicksum(temp) <= 0,
                 label=f"Sequential node {n} at time {t}",
             )
 
-    
     cqm.add_constraint(
-            vars_s[0, 0] == 1,
-            label=f"Starting point",
-        )
-
-
+        vars_s[0, 0] == 1,
+        label=f"Starting point",
+    )
 
     for t in times_all:
         cqm.add_constraint(
@@ -412,16 +401,22 @@ def createMiniModelCQM():
             label=f"One occupied per time {t}",
         )
 
-    
     for index, p in enumerate(lst_prey_path):
         cqm.add_constraint(
             quicksum([vars_s[p[0][t], t] for t in times_all]) >= 1,
             label=f"Capture of prey {index}",
         )
 
-    print(f"\nPrey 1 path:\n{lst_prey_path[0][0]}")
-    #print(f"\nPrey 2 path:\n{lst_prey_path[1][0]}")
+    # print(f"\nPrey 1 path:\n{lst_prey_path[0][0]}")
+    # print(f"\nPrey 2 path:\n{lst_prey_path[1][0]}")
 
+    # bqm, invert = dimod.cqm_to_bqm(cqm)
+
+    # original_stdout = sys.stdout
+    # with open("new_bqm.txt", "w") as f:
+    #     sys.stdout = f
+    #     print(f"Num of variables: {bqm.num_variables}\nNum of interactions: {bqm.num_interactions}")
+    #     sys.stdout = original_stdout
 
     return cqm, [prey[1] for prey in lst_prey_path], costs
 
@@ -433,7 +428,7 @@ def createMiniModelCQM():
 if __name__ == "__main__":
     cqm, path_prey, costs = createMiniModelCQM()
     original_stdout = sys.stdout
-    with open("cqm.txt", "w") as f:
+    with open("new_cqm.txt", "w") as f:
         sys.stdout = f
         print(f"{cqm}")
         sys.stdout = original_stdout  # Reset the standard output to its original value
