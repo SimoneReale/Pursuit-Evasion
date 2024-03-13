@@ -1,5 +1,11 @@
 import networkx as nx
-from dimod import ConstrainedQuadraticModel, Binary, quicksum, BinaryArray
+from dimod import (
+    ConstrainedQuadraticModel,
+    Binary,
+    quicksum,
+    BinaryArray,
+    BinaryQuadraticModel,
+)
 from dwave.system import LeapHybridCQMSampler
 from dwave.preprocessing.presolve import Presolver
 from utils import n_of_nodes, n_time, n_rows, n_cols, n_preys
@@ -11,6 +17,27 @@ from alive_progress import alive_bar
 
 
 def getSetOfMoves(starting_node: int, n_rows: int, n_columns: int):
+    n_of_nodes = n_rows * n_columns
+    pos = []
+    # stay
+    pos.append(starting_node)
+    # up
+    if starting_node - n_columns >= 0:
+        pos.append(starting_node - n_columns)
+    # down
+    if starting_node + n_columns < n_of_nodes:
+        pos.append(starting_node + n_columns)
+    # right
+    if (starting_node + 1) % n_columns != 0:
+        pos.append(starting_node + 1)
+    # left
+    if starting_node % n_columns != 0:
+        pos.append(starting_node - 1)
+
+    return pos
+
+
+def getSetOfEntering(starting_node: int, n_rows: int, n_columns: int):
     n_of_nodes = n_rows * n_columns
     pos = []
     # stay
@@ -103,6 +130,8 @@ def createPreyPathStates(
             path.append(chosen_move)
 
     temp = [(path[t], path[t + 1], t) for t in range(1, len(path) - 1)]
+
+    
     prey_path = {x: 0 for x in indices}
     for x in temp:
         prey_path[x] = 1
@@ -341,6 +370,78 @@ def createStatesCQM():
     return cqm, [prey[1] for prey in lst_prey_path], costs
 
 
+
+
+
+
+def createMiniBQM():
+    print("\nBuilding binary quadratic model...")
+
+    P_same_node = 10
+    P_capture = 10
+    P_start = 30
+
+    nodes = set(range(n_of_nodes))
+    times_all = set(range(n_time))
+    times_minus_0 = set(range(1, n_time))
+
+    indices = getAllPossibleTupleMovesSetTimeMinus0(n_rows, n_cols, n_time)
+
+    costs = {x: randint(5, 15) for x in indices}
+
+    lst_prey_path = [
+        createPreyPathStates(
+            indices, randint(1, n_of_nodes - 1), n_time - 1, n_rows, n_cols
+        )
+        for _ in range(n_preys)
+    ]
+
+    bqm = BinaryQuadraticModel("BINARY")
+
+    dict_var = {}
+
+    for t in range(n_time):
+        for i in nodes:
+            s_i_t = f"s_{i}_{t}"
+            dict_var[f"s_{i}_{t}"] = Binary(f"s_{i}_{t}")
+            bqm.add_variable(s_i_t)
+        for i in nodes:
+            for j in range(i + 1, n_of_nodes):
+                s_i_t = f"s_{i}_{t}"
+                s_j_t = f"s_{j}_{t}"
+                bqm.add_interaction(
+                    s_i_t, s_j_t, 2 * P_same_node
+                )  # ho messo due * per il doppio prodotto
+
+    for states, _ in lst_prey_path:
+        for t, node in states.items():
+            s_i_t = f"s_{node}_{t}"
+            bqm.add_linear(s_i_t, -P_capture)
+
+    bqm.add_linear(f"s_0_0", -P_start)
+
+
+    for t in range(1, n_time):
+        for i in nodes:
+            for j in possible_moves[i]:  
+                s_i_t_minus_1 = f"s_{i}_{t - 1}"
+                s_j_t = f"s_{j}_{t}"
+                bqm.add_interaction(
+                    s_i_t_minus_1, s_j_t, costs[i, j, t]
+                )  # ho messo due * per il doppio prodotto
+
+
+    for t in times_minus_0:
+        for j in nodes:
+            temp = []
+            for i in possible_moves[j]:
+                temp.append(dict_var[f"s_{i}_{t-1}"])
+            bqm.add_linear_equality_constraint(dict_var[f"s_{j}_{t}"] - quicksum(temp), lagrange_multiplier=P_same_node, constant=0)
+
+    return bqm, lst_prey_path, costs
+
+
+
 @profile
 def createMiniModelCQM():
 
@@ -426,11 +527,11 @@ def createMiniModelCQM():
 # Execution time max: 240.955, average: 240.955
 
 if __name__ == "__main__":
-    cqm, path_prey, costs = createMiniModelCQM()
+    cqm, path_prey, costs = createMiniBQM()
     original_stdout = sys.stdout
     with open("new_cqm.txt", "w") as f:
         sys.stdout = f
-        print(f"{cqm}")
+        print(f"{(cqm.num_variables, cqm.num_interactions)}\n{cqm}")
         sys.stdout = original_stdout  # Reset the standard output to its original value
 
     # mem_usage = memory_usage(createCQM)
