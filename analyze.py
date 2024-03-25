@@ -197,14 +197,14 @@ def anim():
         cost_map[key[2]][(start, end)] = value
 
     addPath(node_color_map, blue_dot, "blue")
-    # addPath(node_color_map, green_dot, "green") ############################# PREY 2
+    addPath(node_color_map, green_dot, "green") ############################# PREY 2
     addPath(node_color_map, red_dot, "red")
 
-    print(f"Preda 1 punto blu: {blue_dot}")
-    # print(f"Preda 2 punto verde: {green_dot}")  ############################# PREY 2
-    print(f"Catcher punto rosso: {red_dot}")
-    print(f"\nscore1 {score_prey_1}")
-    print(f"\nscore2 {score_prey_2}\n")
+    print(f"Prey 1 blue dot: {blue_dot}")
+    print(f"Prey 2 green dot: {green_dot}")  ############################# PREY 2
+    print(f"Catcher red dot: {red_dot}")
+    print(f"\nCapture {score_prey_1}")
+    print(f"\nCapture {score_prey_2}\n")
     # print(f"\nscore3 {score_prey_3}\n")
 
     pos = {(x, y): (y, -x) for x, y in G.nodes()}

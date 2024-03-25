@@ -371,9 +371,6 @@ def createStatesCQM():
 
 
 
-
-
-
 def createMiniBQM():
     print("\nBuilding binary quadratic model...")
 
@@ -527,11 +524,11 @@ def createMiniModelCQM():
 # Execution time max: 240.955, average: 240.955
 
 if __name__ == "__main__":
-    cqm, path_prey, costs = createMiniBQM()
+    cqm, path_prey, costs = createMiniModelCQM()
     original_stdout = sys.stdout
     with open("new_cqm.txt", "w") as f:
         sys.stdout = f
-        print(f"{(cqm.num_variables, cqm.num_interactions)}\n{cqm}")
+        print(cqm)
         sys.stdout = original_stdout  # Reset the standard output to its original value
 
     # mem_usage = memory_usage(createCQM)
