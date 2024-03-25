@@ -71,7 +71,6 @@ for x in mean_percentages_simple_2:
     mean_percentages_error_2.append(mean_err)
 
 print(mean_percentages_error_1)
-print(mean_percentages_error_2)
             
 plt.rcParams.update({'font.size': 28})
 

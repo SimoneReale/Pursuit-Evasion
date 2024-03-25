@@ -6,11 +6,11 @@ from random import choice, randint
 from dataclasses import dataclass
 
 my_token = "DEV-67ff3df0a07bf847ff52a79ddf4518942a0c481c"
-n_of_nodes = 25
+n_of_nodes = 9
 n_rows = int(np.sqrt(n_of_nodes))
 n_cols = int(np.sqrt(n_of_nodes))
-n_time = 16
-n_preys = 2
+n_time = 4
+n_preys = 1
 
 
 ##################################################################

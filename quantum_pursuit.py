@@ -196,22 +196,22 @@ def run_QPU(cqm):
     presolve.apply()
     reduced_cqm = presolve.detach_model()
 
-    bqm, invert = dimod.cqm_to_bqm(reduced_cqm, lagrange_multiplier=600)
+    bqm, invert = dimod.cqm_to_bqm(reduced_cqm, lagrange_multiplier=150)
 
     print(f"\nNum of var: {bqm.num_variables}\nNum of interactions: {bqm.num_interactions}")
     #Advantage_system6.4
-    #"Advantage2_prototype2.2"
+    #"Advantage2_prototype2.3"
     sampler = EmbeddingComposite(
         DWaveSampler(
         token= my_token,
         endpoint="https://na-west-1.cloud.dwavesys.com/sapi/v2/",
-        solver="Advantage2_prototype2.2",
+        solver="Advantage_system6.4",
         )
     )
     print("\nStarting QPU: OK")
 
-    sampleset = sampler.sample(bqm, chain_strength=500)
-    dwave.inspector.show(sampleset)
+    sampleset = sampler.sample(bqm, num_reads=100,chain_strength=1000)
+    # dwave.inspector.show(sampleset)
     new_reduced_sample = sampleset.first.sample
     sample = invert(new_reduced_sample)
     
@@ -230,11 +230,16 @@ def run_QPU(cqm):
     else:
         print(f"Ho {len(feasible)} soluzioni!")
         print(f"This is the best: {feasible[0]}")
+        
 
-    sample_cqm = invert(sample)
-    sol = [key for key, val in sample.items() if val > 0]
+    
+    dwave.inspector.show(sampleset)
 
-    return sol
+    sample_cqm = presolve.restore_samples(sample)
+
+    sol = [key for val, key in zip(sample_cqm[0][0], sample_cqm[1]) if val > 0]
+
+    return sol, feasible
 
 
 
@@ -275,11 +280,12 @@ if __name__ == "__main__":
     print(art, art2)
 
 
-    cqm, path_prey, costs = createAdvancedCQM()
+    cqm, path_prey, costs = createMiniModelCQM()
     #sol = run_QPU(cqm)
-    sol = run_hybridCQM_solver(cqm)
-    # print("\n\nSecond iteration")
-    # sol2 = run_hybridCQM_solver(cqm)
+    
+    sol, feasible = run_QPU(cqm)
+    print("Sol qpu: ", sol)
+    print(run_hybridCQM_solver(cqm))
 
     serial = {"sol": sol, "prey": path_prey, "costs": costs}
     with open("items_solution_quantum.pkl", "wb") as f:

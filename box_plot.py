@@ -55,7 +55,6 @@ print(total_times_all)
 
 
 plt.rcParams.update({'font.size': 28})
-# Total run times for each number of nodes
 total_runtimes = {
     36: total_times_all[0],  # Example data for 36 nodes
     49: total_times_all[1],  # Example data for 59 nodes
@@ -63,18 +62,16 @@ total_runtimes = {
     81: total_times_all[3],  # Example data for 81 nodes
 }
 
-# Extracting data for the box plot
+
 data = [total_runtimes[node] for node in total_runtimes]
 
-# Creating the box plot
+
 plt.figure(figsize=(10, 6))
 plt.boxplot(data, labels=total_runtimes.keys(), patch_artist=True)
 
-# Adding labels and title
+
 #plt.title('Box Plot of Total Run Time for Different Number of Nodes')
 plt.xlabel('Number of Nodes')
 plt.ylabel('Total QPU Access Time (seconds)')
-
-# Displaying the plot
 plt.grid(True)
 plt.show()
